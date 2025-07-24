@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { PWALifecycle } from '@/components/PWALifecycle'
+import { ToastContainer } from '@/components/ui/Toast'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -51,6 +52,7 @@ export default function RootLayout({
       <body className={inter.className}>
         {children}
         <PWALifecycle />
+        <ToastContainer />
       </body>
     </html>
   )
