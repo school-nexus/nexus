@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { StudentRegistrationForm } from '@/components/forms/StudentRegistrationForm'
+import { StudentDetailsModal } from '@/components/students/StudentDetailsModal'
 import { 
   Plus,
   Search,
@@ -36,6 +37,7 @@ interface StudentsClientProps {
 export function StudentsClient({ userRole, userName, userEmail, initialStudents }: StudentsClientProps) {
   const [students, setStudents] = useState<Student[]>(initialStudents)
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false)
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
   const [activeTab, setActiveTab] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All Status')
@@ -287,7 +289,10 @@ export function StudentsClient({ userRole, userName, userEmail, initialStudents 
                         </td>
                         <td className="py-4 px-4">
                           <div className="flex items-center space-x-2">
-                            <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                            <button 
+                              onClick={() => setSelectedStudent(student)}
+                              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            >
                               <Eye className="h-4 w-4" />
                             </button>
                             <button className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors">
@@ -319,6 +324,13 @@ export function StudentsClient({ userRole, userName, userEmail, initialStudents 
         isOpen={isAddStudentOpen}
         onClose={() => setIsAddStudentOpen(false)}
         onSubmit={handleAddStudent}
+      />
+
+      {/* Student Details Modal */}
+      <StudentDetailsModal
+        isOpen={!!selectedStudent}
+        onClose={() => setSelectedStudent(null)}
+        student={selectedStudent}
       />
     </>
   )
