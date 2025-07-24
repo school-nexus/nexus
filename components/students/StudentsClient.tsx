@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { StudentRegistrationForm } from '@/components/forms/StudentRegistrationForm'
 import { StudentDetailsModal } from '@/components/students/StudentDetailsModal'
+import { studentsService } from '@/lib/database'
 import { 
   Plus,
   Search,
@@ -59,22 +60,56 @@ export function StudentsClient({ userRole, userName, userEmail, initialStudents 
   }, [students, searchQuery, statusFilter, classFilter])
 
   const handleAddStudent = async (data: any) => {
-    const newStudent: Student = {
-      id: data.id,
-      name: `${data.firstName} ${data.lastName}`,
-      email: data.email || `${data.firstName.toLowerCase()}.${data.lastName.toLowerCase()}@schoolnexus.com`,
-      phone: data.phone || 'N/A',
-      class: `${data.class} - ${data.section}`,
-      status: 'Active'
+    try {
+      // Prepare student data for database
+      const studentData = {
+        student_id: data.id,
+        first_name: data.firstName,
+        last_name: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        date_of_birth: data.dateOfBirth,
+        gender: data.gender?.toLowerCase(),
+        address: data.address,
+        blood_group: data.bloodGroup,
+        parent_name: data.parentName,
+        parent_phone: data.parentPhone,
+        parent_email: data.parentEmail,
+        roll_number: data.rollNumber,
+        admission_date: data.admissionDate,
+        status: 'active'
+      }
+
+      // Create student in database
+      const newStudent = await studentsService.create(studentData)
+      
+      // Transform for UI
+      const uiStudent: Student = {
+        id: newStudent.id,
+        name: `${newStudent.first_name} ${newStudent.last_name}`,
+        email: newStudent.email || '',
+        phone: newStudent.phone || '',
+        class: 'Not assigned',
+        status: 'Active',
+        ...newStudent
+      }
+      
+      setStudents(prev => [uiStudent, ...prev])
+    } catch (error) {
+      console.error('Error adding student:', error)
+      throw error // Re-throw to show error toast
     }
-    
-    setStudents(prev => [newStudent, ...prev])
-    console.log('New student added:', newStudent)
   }
 
-  const handleDeleteStudent = (studentId: string) => {
+  const handleDeleteStudent = async (studentId: string) => {
     if (confirm('Are you sure you want to delete this student?')) {
-      setStudents(prev => prev.filter(s => s.id !== studentId))
+      try {
+        await studentsService.delete(studentId)
+        setStudents(prev => prev.filter(s => s.id !== studentId))
+      } catch (error) {
+        console.error('Error deleting student:', error)
+        alert('Failed to delete student. Please try again.')
+      }
     }
   }
 

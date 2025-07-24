@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { SubjectForm } from '@/components/forms/SubjectForm'
+import { subjectsService } from '@/lib/database'
 import { 
   Plus,
   Search,
@@ -60,32 +61,99 @@ export function SubjectsClient({ userRole, userName, userEmail, initialSubjects 
   }, [subjects, searchQuery, categoryFilter, statusFilter])
 
   const handleAddSubject = async (data: any) => {
-    const newSubject: Subject = {
-      id: data.id,
-      code: data.code,
-      name: data.name,
-      category: data.category,
-      credits: data.credits,
-      totalMarks: data.totalMarks,
-      status: data.status,
-      description: data.description
+    try {
+      // Prepare subject data for database
+      const subjectData = {
+        code: data.code,
+        name: data.name,
+        description: data.description,
+        category: data.category,
+        credits: parseInt(data.credits) || null,
+        total_marks: parseInt(data.totalMarks) || null,
+        passing_marks: parseInt(data.passingMarks) || null,
+        duration_hours: parseInt(data.duration) || null,
+        objectives: data.objectives,
+        syllabus: data.syllabus,
+        prerequisites: data.prerequisites,
+        is_active: data.isActive !== false
+      }
+
+      // Create subject in database
+      const newSubject = await subjectsService.create(subjectData)
+      
+      // Transform for UI
+      const uiSubject: Subject = {
+        id: newSubject.id,
+        code: newSubject.code,
+        name: newSubject.name,
+        category: newSubject.category,
+        credits: newSubject.credits?.toString() || '',
+        totalMarks: newSubject.total_marks?.toString() || '',
+        status: newSubject.is_active ? 'Active' : 'Inactive',
+        description: newSubject.description || '',
+        ...newSubject
+      }
+      
+      setSubjects(prev => [uiSubject, ...prev])
+    } catch (error) {
+      console.error('Error adding subject:', error)
+      throw error // Re-throw to show error toast
     }
-    
-    setSubjects(prev => [newSubject, ...prev])
-    console.log('New subject added:', newSubject)
   }
 
   const handleEditSubject = async (data: any) => {
-    setSubjects(prev => prev.map(subject => 
-      subject.id === data.id ? { ...subject, ...data } : subject
-    ))
-    setEditingSubject(null)
-    console.log('Subject updated:', data)
+    try {
+      // Prepare subject data for database
+      const subjectData = {
+        code: data.code,
+        name: data.name,
+        description: data.description,
+        category: data.category,
+        credits: parseInt(data.credits) || null,
+        total_marks: parseInt(data.totalMarks) || null,
+        passing_marks: parseInt(data.passingMarks) || null,
+        duration_hours: parseInt(data.duration) || null,
+        objectives: data.objectives,
+        syllabus: data.syllabus,
+        prerequisites: data.prerequisites,
+        is_active: data.isActive !== false
+      }
+
+      // Update subject in database
+      const updatedSubject = await subjectsService.update(data.id, subjectData)
+      
+      // Transform for UI
+      const uiSubject: Subject = {
+        id: updatedSubject.id,
+        code: updatedSubject.code,
+        name: updatedSubject.name,
+        category: updatedSubject.category,
+        credits: updatedSubject.credits?.toString() || '',
+        totalMarks: updatedSubject.total_marks?.toString() || '',
+        status: updatedSubject.is_active ? 'Active' : 'Inactive',
+        description: updatedSubject.description || '',
+        ...updatedSubject
+      }
+      
+      setSubjects(prev => prev.map(subject => 
+        subject.id === data.id ? uiSubject : subject
+      ))
+      setEditingSubject(null)
+    } catch (error) {
+      console.error('Error updating subject:', error)
+      throw error // Re-throw to show error toast
+    }
   }
 
-  const handleDeleteSubject = (subjectId: string) => {
+  const handleDeleteSubject = async (subjectId: string) => {
     if (confirm('Are you sure you want to delete this subject?')) {
-      setSubjects(prev => prev.filter(s => s.id !== subjectId))
+      try {
+        await subjectsService.delete(subjectId)
+        setSubjects(prev => prev.filter(s => s.id !== subjectId))
+      } catch (error) {
+        console.error('Error deleting subject:', error)
+        alert('Failed to delete subject. Please try again.')
+      }
     }
   }
 

@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { ClassForm } from '@/components/forms/ClassForm'
+import { classesService } from '@/lib/database'
 import { 
   Plus,
   Search,
@@ -66,36 +67,105 @@ export function ClassesClient({ userRole, userName, userEmail, initialClasses }:
   }, [classes, searchQuery, gradeFilter, statusFilter])
 
   const handleAddClass = async (data: any) => {
-    const newClass: Class = {
-      id: data.id,
-      name: data.name,
-      section: data.section,
-      grade: data.grade,
-      academicYear: data.academicYear,
-      classTeacher: data.classTeacher,
-      room: data.room,
-      capacity: data.capacity,
-      currentStudents: data.currentStudents,
-      subjects: data.subjects,
-      status: data.status,
-      description: data.description
+    try {
+      // Prepare class data for database
+      const classData = {
+        name: data.name,
+        section: data.section,
+        grade: data.grade,
+        class_teacher_id: data.classTeacher ? data.classTeacher : null,
+        room: data.room,
+        capacity: parseInt(data.capacity) || null,
+        current_students: parseInt(data.currentStudents) || 0,
+        schedule: data.schedule,
+        description: data.description,
+        subjects: data.subjects,
+        is_active: data.isActive !== false
+      }
+
+      // Create class in database
+      const newClass = await classesService.create(classData)
+      
+      // Transform for UI
+      const uiClass: Class = {
+        id: newClass.id,
+        name: newClass.name,
+        section: newClass.section,
+        grade: newClass.grade,
+        academicYear: '2024-2025',
+        classTeacher: 'Not assigned',
+        room: newClass.room || 'Not assigned',
+        capacity: newClass.capacity?.toString() || '0',
+        currentStudents: newClass.current_students?.toString() || '0',
+        subjects: newClass.subjects || [],
+        status: newClass.is_active ? 'Active' : 'Inactive',
+        description: newClass.description || '',
+        ...newClass
+      }
+      
+      setClasses(prev => [uiClass, ...prev])
+    } catch (error) {
+      console.error('Error adding class:', error)
+      throw error // Re-throw to show error toast
     }
-    
-    setClasses(prev => [newClass, ...prev])
-    console.log('New class added:', newClass)
   }
 
   const handleEditClass = async (data: any) => {
-    setClasses(prev => prev.map(classItem => 
-      classItem.id === data.id ? { ...classItem, ...data } : classItem
-    ))
-    setEditingClass(null)
-    console.log('Class updated:', data)
+    try {
+      // Prepare class data for database
+      const classData = {
+        name: data.name,
+        section: data.section,
+        grade: data.grade,
+        class_teacher_id: data.classTeacher ? data.classTeacher : null,
+        room: data.room,
+        capacity: parseInt(data.capacity) || null,
+        current_students: parseInt(data.currentStudents) || 0,
+        schedule: data.schedule,
+        description: data.description,
+        subjects: data.subjects,
+        is_active: data.isActive !== false
+      }
+
+      // Update class in database
+      const updatedClass = await classesService.update(data.id, classData)
+      
+      // Transform for UI
+      const uiClass: Class = {
+        id: updatedClass.id,
+        name: updatedClass.name,
+        section: updatedClass.section,
+        grade: updatedClass.grade,
+        academicYear: '2024-2025',
+        classTeacher: 'Not assigned',
+        room: updatedClass.room || 'Not assigned',
+        capacity: updatedClass.capacity?.toString() || '0',
+        currentStudents: updatedClass.current_students?.toString() || '0',
+        subjects: updatedClass.subjects || [],
+        status: updatedClass.is_active ? 'Active' : 'Inactive',
+        description: updatedClass.description || '',
+        ...updatedClass
+      }
+      
+      setClasses(prev => prev.map(classItem => 
+        classItem.id === data.id ? uiClass : classItem
+      ))
+      setEditingClass(null)
+    } catch (error) {
+      console.error('Error updating class:', error)
+      throw error // Re-throw to show error toast
+    }
   }
 
-  const handleDeleteClass = (classId: string) => {
+  const handleDeleteClass = async (classId: string) => {
     if (confirm('Are you sure you want to delete this class?')) {
-      setClasses(prev => prev.filter(c => c.id !== classId))
+      try {
+        await classesService.delete(classId)
+        setClasses(prev => prev.filter(c => c.id !== classId))
+      } catch (error) {
+        console.error('Error deleting class:', error)
+        alert('Failed to delete class. Please try again.')
+      }
     }
   }
 

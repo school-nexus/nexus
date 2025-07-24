@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { TermForm } from '@/components/forms/TermForm'
+import { termsService } from '@/lib/database'
 import { 
   Plus,
   Search,
@@ -62,34 +63,109 @@ export function TermsClient({ userRole, userName, userEmail, initialTerms }: Ter
   }, [terms, searchQuery, statusFilter, yearFilter])
 
   const handleAddTerm = async (data: any) => {
-    const newTerm: Term = {
-      id: data.id,
-      name: data.name,
-      code: data.code,
-      academicYear: data.academicYear,
-      startDate: data.startDate,
-      endDate: data.endDate,
-      status: data.status,
-      description: data.description,
-      totalWeeks: data.totalWeeks,
-      feeAmount: data.feeAmount
+    try {
+      // Prepare term data for database
+      const termData = {
+        name: data.name,
+        code: data.code,
+        start_date: data.startDate,
+        end_date: data.endDate,
+        registration_start: data.registrationStart,
+        registration_end: data.registrationEnd,
+        exam_start: data.examStart,
+        exam_end: data.examEnd,
+        result_date: data.resultDate,
+        status: data.status || 'upcoming',
+        total_weeks: parseInt(data.totalWeeks) || null,
+        holiday_days: parseInt(data.holidays) || null,
+        fee_amount: parseFloat(data.feeAmount) || null,
+        description: data.description,
+        is_active: data.isActive !== false
+      }
+
+      // Create term in database
+      const newTerm = await termsService.create(termData)
+      
+      // Transform for UI
+      const uiTerm: Term = {
+        id: newTerm.id,
+        name: newTerm.name,
+        code: newTerm.code || '',
+        academicYear: '2024-2025',
+        startDate: newTerm.start_date,
+        endDate: newTerm.end_date,
+        status: newTerm.status || 'upcoming',
+        description: newTerm.description || '',
+        totalWeeks: newTerm.total_weeks?.toString() || '',
+        feeAmount: newTerm.fee_amount?.toString() || '',
+        ...newTerm
+      }
+      
+      setTerms(prev => [uiTerm, ...prev])
+    } catch (error) {
+      console.error('Error adding term:', error)
+      throw error // Re-throw to show error toast
     }
-    
-    setTerms(prev => [newTerm, ...prev])
-    console.log('New term added:', newTerm)
   }
 
   const handleEditTerm = async (data: any) => {
-    setTerms(prev => prev.map(term => 
-      term.id === data.id ? { ...term, ...data } : term
-    ))
-    setEditingTerm(null)
-    console.log('Term updated:', data)
+    try {
+      // Prepare term data for database
+      const termData = {
+        name: data.name,
+        code: data.code,
+        start_date: data.startDate,
+        end_date: data.endDate,
+        registration_start: data.registrationStart,
+        registration_end: data.registrationEnd,
+        exam_start: data.examStart,
+        exam_end: data.examEnd,
+        result_date: data.resultDate,
+        status: data.status || 'upcoming',
+        total_weeks: parseInt(data.totalWeeks) || null,
+        holiday_days: parseInt(data.holidays) || null,
+        fee_amount: parseFloat(data.feeAmount) || null,
+        description: data.description,
+        is_active: data.isActive !== false
+      }
+
+      // Update term in database
+      const updatedTerm = await termsService.update(data.id, termData)
+      
+      // Transform for UI
+      const uiTerm: Term = {
+        id: updatedTerm.id,
+        name: updatedTerm.name,
+        code: updatedTerm.code || '',
+        academicYear: '2024-2025',
+        startDate: updatedTerm.start_date,
+        endDate: updatedTerm.end_date,
+        status: updatedTerm.status || 'upcoming',
+        description: updatedTerm.description || '',
+        totalWeeks: updatedTerm.total_weeks?.toString() || '',
+        feeAmount: updatedTerm.fee_amount?.toString() || '',
+        ...updatedTerm
+      }
+      
+      setTerms(prev => prev.map(term => 
+        term.id === data.id ? uiTerm : term
+      ))
+      setEditingTerm(null)
+    } catch (error) {
+      console.error('Error updating term:', error)
+      throw error // Re-throw to show error toast
+    }
   }
 
-  const handleDeleteTerm = (termId: string) => {
+  const handleDeleteTerm = async (termId: string) => {
     if (confirm('Are you sure you want to delete this term?')) {
-      setTerms(prev => prev.filter(t => t.id !== termId))
+      try {
+        await termsService.delete(termId)
+        setTerms(prev => prev.filter(t => t.id !== termId))
+      } catch (error) {
+        console.error('Error deleting term:', error)
+        alert('Failed to delete term. Please try again.')
+      }
     }
   }
 

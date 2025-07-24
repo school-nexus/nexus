@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { TeacherRegistrationForm } from '@/components/forms/TeacherRegistrationForm'
+import { teachersService } from '@/lib/database'
 import { 
   Plus,
   Search,
@@ -62,25 +63,59 @@ export function TeachersClient({ userRole, userName, userEmail, initialTeachers 
   }, [teachers, searchQuery, statusFilter, subjectFilter])
 
   const handleAddTeacher = async (data: any) => {
-    const newTeacher: Teacher = {
-      id: data.id,
-      name: `${data.firstName} ${data.lastName}`,
-      email: data.email,
-      phone: data.phone,
-      subjects: data.subjects,
-      designation: data.designation,
-      status: 'Active',
-      joiningDate: data.joiningDate,
-      experience: data.experience
+    try {
+      // Prepare teacher data for database
+      const teacherData = {
+        employee_id: data.employeeId || data.id,
+        first_name: data.firstName,
+        last_name: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        date_of_birth: data.dateOfBirth,
+        gender: data.gender?.toLowerCase(),
+        address: data.address,
+        designation: data.designation,
+        qualification: data.qualification,
+        experience: parseInt(data.experience) || 0,
+        joining_date: data.joiningDate,
+        salary: parseFloat(data.salary) || 0,
+        emergency_contact_name: data.emergencyContact,
+        emergency_contact_phone: data.emergencyPhone,
+        subjects: data.subjects,
+        status: 'active'
+      }
+
+      // Create teacher in database
+      const newTeacher = await teachersService.create(teacherData)
+      
+      // Transform for UI
+      const uiTeacher: Teacher = {
+        id: newTeacher.id,
+        name: `${newTeacher.first_name} ${newTeacher.last_name}`,
+        email: newTeacher.email,
+        phone: newTeacher.phone || '',
+        subjects: newTeacher.subjects || [],
+        designation: newTeacher.designation,
+        status: 'Active',
+        ...newTeacher
+      }
+      
+      setTeachers(prev => [uiTeacher, ...prev])
+    } catch (error) {
+      console.error('Error adding teacher:', error)
+      throw error // Re-throw to show error toast
     }
-    
-    setTeachers(prev => [newTeacher, ...prev])
-    console.log('New teacher added:', newTeacher)
   }
 
-  const handleDeleteTeacher = (teacherId: string) => {
+  const handleDeleteTeacher = async (teacherId: string) => {
     if (confirm('Are you sure you want to delete this teacher?')) {
-      setTeachers(prev => prev.filter(t => t.id !== teacherId))
+      try {
+        await teachersService.delete(teacherId)
+        setTeachers(prev => prev.filter(t => t.id !== teacherId))
+      } catch (error) {
+        console.error('Error deleting teacher:', error)
+        alert('Failed to delete teacher. Please try again.')
+      }
     }
   }
 

@@ -1,5 +1,6 @@
 import { StudentsClient } from '@/components/students/StudentsClient'
 import { createClient } from '@/utils/supabase/server'
+import { studentsService } from '@/lib/database'
 import { cookies } from 'next/headers'
 
 export default async function StudentsPage() {
@@ -12,29 +13,46 @@ export default async function StudentsPage() {
   const userName = session?.user?.email?.split('@')[0] || 'User'
   const userEmail = session?.user?.email || ''
 
-  // Mock student data based on the images
-  const students = [
-    {
-      id: 'STU-001',
-      name: 'Nash Files',
-      email: 'creamland179@gmail.com',
-      phone: '0758601100',
-      class: 'P.7 - A',
-      status: 'Active',
-      photo: '/placeholder-avatar.png'
-    },
-    {
-      id: 'STU-002',
-      name: 'Nuwabaga Paul',
-      email: 'nelsonnuwagaba160@gmail.com',
-      phone: '0708174855',
-      class: 'P.7 - A',
-      status: 'Active',
-      photo: '/placeholder-avatar.png'
-    }
-  ]
+  // Fetch students from database
+  let students = []
+  try {
+    const dbStudents = await studentsService.getAll()
+    students = dbStudents.map(student => ({
+      id: student.id,
+      name: `${student.first_name} ${student.last_name}`,
+      email: student.email || '',
+      phone: student.phone || '',
+      class: student.class ? `${student.class.name} ${student.class.section}` : 'Not assigned',
+      status: student.status === 'active' ? 'Active' : 'Inactive',
+      // Include all database fields for detailed view
+      ...student
+    }))
+  } catch (error) {
+    console.error('Error fetching students:', error)
+    // Fallback to mock data if database fails
+    students = [
+      {
+        id: 'STU-001',
+        name: 'Nash Files',
+        email: 'creamland179@gmail.com',
+        phone: '0758601100',
+        class: 'P.7 - A',
+        status: 'Active',
+        photo: '/placeholder-avatar.png'
+      },
+      {
+        id: 'STU-002',
+        name: 'Nuwabaga Paul',
+        email: 'nelsonnuwagaba160@gmail.com',
+        phone: '0708174855',
+        class: 'P.7 - A',
+        status: 'Active',
+        photo: '/placeholder-avatar.png'
+      }
+    ]
+  }
 
-    return (
+  return (
     <StudentsClient 
       userRole={userRole}
       userName={userName}
